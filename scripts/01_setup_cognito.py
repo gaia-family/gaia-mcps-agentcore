@@ -11,7 +11,7 @@ Outputs:
 import boto3
 import os
 
-from config import save_result
+from config import load_result, save_result
 
 
 def setup_cognito():
@@ -22,6 +22,11 @@ def setup_cognito():
     temp_password = os.environ["COGNITO_TEST_TEMP_PASSWORD"]
     resource_server_id = os.environ["COGNITO_RESOURCE_SERVER_ID"]
     resource_server_name = os.environ["COGNITO_RESOURCE_SERVER_NAME"]
+
+    existing = load_result()
+    if "cognito_pool_id" in existing:
+        print(f"Cognito pool already set up: {existing['cognito_pool_id']} — skipping.")
+        return
 
     cognito = boto3.client("cognito-idp", region_name=region)
 

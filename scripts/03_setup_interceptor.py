@@ -1,8 +1,7 @@
 """
 Deploys the Gateway Request Interceptor Lambda and wires it to the Gateway.
 
-The AgentCore CLI does not support interceptor configuration in agentcore.json,
-so this script is the single source of truth for the interceptor. Re-run it
+This script is the single source of truth for the interceptor. Re-run it
 whenever the interceptor code changes or after a full Gateway redeploy.
 
   1. Create Lambda execution role (idempotent)

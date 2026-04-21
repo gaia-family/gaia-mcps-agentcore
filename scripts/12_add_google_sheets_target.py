@@ -1,27 +1,23 @@
 """
-Adds the HubSpot MCP Lambda as a target to the AgentCore Gateway.
+Adds the Google Sheets MCP Lambda as a target to the AgentCore Gateway.
 
-The HubSpot Lambda is deployed behind a public API Gateway URL.
-The interceptor sets X-Amzn-Bedrock-AgentCore-Runtime-Custom-User-Sub on
-every request; allowedRequestHeaders ensures the Gateway forwards it.
-
-Reads:
-    resulting_config.json  (hubspot_endpoint, gateway_id)
-    .env                   (AWS_REGION, GATEWAY_NAME, HUBSPOT_GATEWAY_TARGET)
+Reads from .env:   GATEWAY_NAME, GOOGLE_SHEETS_GATEWAY_TARGET, AWS_REGION
+Reads from resulting_config.json: google_sheets_endpoint
+Writes to resulting_config.json: google_sheets_gateway_target_id
 
 Usage:
-    python scripts/07_add_hubspot_target.py
+    python scripts/12_add_google_sheets_target.py
 """
 
 import boto3
 import os
-import sys
 
+import config
 from config import load_result, save_result
 
 REGION = os.environ["AWS_REGION"]
 GATEWAY_NAME = os.environ["GATEWAY_NAME"]
-TARGET_NAME = os.environ["HUBSPOT_GATEWAY_TARGET"]
+TARGET_NAME = os.environ["GOOGLE_SHEETS_GATEWAY_TARGET"]
 USER_SUB_HEADER = "X-Amzn-Bedrock-AgentCore-Runtime-Custom-User-Sub"
 
 
@@ -29,20 +25,20 @@ def get_gateway_id(ctrl, name: str) -> str:
     for gw in ctrl.list_gateways().get("items", []):
         if name in gw.get("name", ""):
             return gw["gatewayId"]
-    raise ValueError(f"Gateway '{name}' not found. Run script 02 first.")
+    raise ValueError(f"Gateway '{name}' not found.")
 
 
 def main():
     cfg = load_result()
-    if "hubspot_endpoint" not in cfg:
-        print("ERROR: hubspot_endpoint not in resulting_config.json. Run script 06 first.")
-        sys.exit(1)
+    endpoint = cfg.get("google_sheets_endpoint")
+    if not endpoint:
+        print("ERROR: google_sheets_endpoint not found in resulting_config.json. Run script 11 first.")
+        raise SystemExit(1)
 
-    endpoint = cfg["hubspot_endpoint"]
     ctrl = boto3.client("bedrock-agentcore-control", region_name=REGION)
 
     print(f"Resolving gateway '{GATEWAY_NAME}'...")
-    gateway_id = cfg.get("gateway_id") or get_gateway_id(ctrl, GATEWAY_NAME)
+    gateway_id = get_gateway_id(ctrl, GATEWAY_NAME)
     print(f"  Gateway ID: {gateway_id}")
 
     existing_targets = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
@@ -50,7 +46,7 @@ def main():
     if existing:
         target_id = existing["targetId"]
         print(f"  Target '{TARGET_NAME}' already exists: {target_id} — skipping.")
-        save_result({"hubspot_gateway_target_id": target_id})
+        save_result({"google_sheets_gateway_target_id": target_id})
         return
 
     print(f"Creating target '{TARGET_NAME}'...")
@@ -59,7 +55,7 @@ def main():
     resp = ctrl.create_gateway_target(
         gatewayIdentifier=gateway_id,
         name=TARGET_NAME,
-        description="HubSpot MCP Lambda — per-user OAuth via AgentCore Identity",
+        description="Google Sheets MCP Lambda — per-user OAuth via AgentCore Identity",
         targetConfiguration={
             "mcp": {
                 "mcpServer": {
@@ -75,8 +71,9 @@ def main():
     target_id = resp["targetId"]
     print(f"  Target ID: {target_id}")
 
-    save_result({"hubspot_gateway_target_id": target_id})
-    print(f"Done. Config saved to resulting_config.json")
+    save_result({"google_sheets_gateway_target_id": target_id})
+    print(f"Done. Target ID saved to resulting_config.json")
+    print(f"\nNext: run scripts/13_setup_google_oauth_callback.py")
 
 
 if __name__ == "__main__":

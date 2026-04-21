@@ -61,6 +61,12 @@ def main():
     gateway_id = cfg.get("gateway_id") or get_gateway_id(ctrl, GATEWAY_NAME)
     print(f"  Gateway ID: {gateway_id}")
 
+    existing_targets = ctrl.list_gateway_targets(gatewayIdentifier=gateway_id).get("items", [])
+    existing = next((t for t in existing_targets if t.get("name") == TARGET_NAME), None)
+    if existing:
+        print(f"  Target '{TARGET_NAME}' already exists: {existing['targetId']} — skipping.")
+        return
+
     print(f"Creating gateway target '{TARGET_NAME}'...")
     response = ctrl.create_gateway_target(
         gatewayIdentifier=gateway_id,
