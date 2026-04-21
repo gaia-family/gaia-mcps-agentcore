@@ -14,8 +14,8 @@ _build_request_context collects these into BedrockAgentCoreContext.get_request_h
 Idempotent: stateless, no side effects — safe to retry.
 """
 
-import json
 import base64
+import json
 import logging
 
 logger = logging.getLogger()
